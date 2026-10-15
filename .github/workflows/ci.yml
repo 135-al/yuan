@@ -1,0 +1,159 @@
+name: CI - 自动化测试流水线
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  workflow_dispatch:
+    inputs:
+      perf_stage_users:
+        description: '性能压测并发梯度（空格分隔）'
+        required: false
+        default: '20 50'
+
+jobs:
+  # =====================================================================
+  # 1. 接口自动化测试 + 代码覆盖率
+  # =====================================================================
+  api-tests:
+    name: 接口自动化测试 & 覆盖率
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-test.txt
+
+      - name: 运行接口自动化测试（含覆盖率）
+        run: |
+          python -m pytest api_tests tests -c pytest_allure.ini \
+            --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml
+
+      - name: 生成 Allure HTML 报告
+        if: always()
+        run: python gen_report.py
+
+      - name: 上传测试报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-test-report
+          path: |
+            allure-report.html
+            allure-results/
+            coverage.xml
+          retention-days: 14
+
+  # =====================================================================
+  # 2. UI 自动化测试（Playwright）
+  # =====================================================================
+  ui-tests:
+    name: UI 自动化测试 (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-test.txt
+
+      - name: 安装 Playwright 浏览器（Chromium）
+        run: python -m playwright install --with-deps chromium
+
+      - name: 运行 UI 自动化测试
+        run: python -m pytest -c pytest_ui.ini
+
+      - name: 上传 UI 测试产物（截图 / Trace / Allure 数据）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-test-artifacts
+          path: |
+            ui_tests/artifacts/
+            ui_tests/allure-results/
+          retention-days: 14
+
+  # =====================================================================
+  # 3. 性能压测（冒烟级）
+  # =====================================================================
+  perf-tests:
+    name: 性能压测 (Locust)
+    runs-on: ubuntu-latest
+    needs: api-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-test.txt
+
+      - name: 执行梯度压测
+        env:
+          PERF_STAGE_DURATION: 15s
+        run: python perf_tests/run_perf.py ${{ github.event.inputs.perf_stage_users || '20 50' }}
+
+      - name: 上传性能报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-report
+          path: |
+            perf_tests/性能测试报告.md
+            perf_tests/results/
+          retention-days: 14
+
+  # =====================================================================
+  # 4. 并发测试（竞态缺陷验证）
+  # =====================================================================
+  concurrency-tests:
+    name: 并发测试 (标签竞态)
+    runs-on: ubuntu-latest
+    needs: api-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-test.txt
+
+      # 缺陷⑧ 用例标记为 xfail：复现即通过（xfail），修复后转为 xpass
+      - name: 运行并发测试
+        run: python -m pytest concurrency_tests -v -rx --alluredir=concurrency_tests/allure-results
+
+      - name: 上传并发测试产物
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: concurrency-test-report
+          path: concurrency_tests/allure-results/
+          retention-days: 14

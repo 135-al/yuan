@@ -1,0 +1,269 @@
+/* =========================================================
+   TaskFlow - 任务管理系统 样式（浅色主题）
+   ========================================================= */
+
+:root {
+  --bg: #f4f6fb;
+  --surface: #ffffff;
+  --border: #e3e8f0;
+  --text: #1f2733;
+  --text-soft: #6b7688;
+  --primary: #3b6fe0;
+  --primary-dark: #2f5cc0;
+  --pending: #e08a3b;
+  --doing: #3b6fe0;
+  --done: #2fa06a;
+  --overdue: #d9534f;
+  --radius: 12px;
+  --shadow: 0 2px 10px rgba(23, 43, 82, .06);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.hidden { display: none !important; }
+
+/* ---------------- 顶部导航 ---------------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 24px;
+  height: 60px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.brand { font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+
+.tag {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--primary);
+  background: #eaf1ff;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.nav { display: flex; gap: 6px; margin-left: auto; }
+
+.nav-btn {
+  border: none;
+  background: transparent;
+  padding: 7px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-soft);
+  transition: all .15s;
+}
+.nav-btn:hover { background: #f0f4ff; color: var(--primary); }
+.nav-btn.active { background: var(--primary); color: #fff; font-weight: 600; }
+
+.user-area { display: flex; align-items: center; gap: 12px; }
+.user-name { font-weight: 600; color: var(--primary); }
+
+/* ---------------- 通用容器 ---------------- */
+.view { max-width: 1080px; margin: 0 auto; padding: 24px; }
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  margin-bottom: 18px;
+}
+
+.panel-title { font-size: 15px; font-weight: 700; }
+
+.panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.panel-head .panel-title { margin: 0; }
+.filters { display: flex; gap: 10px; align-items: center; }
+
+/* ---------------- 按钮 ---------------- */
+.btn {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all .15s;
+  font-family: inherit;
+}
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-ghost { background: #fff; border-color: var(--border); color: var(--text-soft); }
+.btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
+.btn-block { width: 100%; margin-top: 18px; }
+.btn-danger { background: #fff; border-color: #f2c9c7; color: var(--overdue); }
+.btn-danger:hover { background: var(--overdue); color: #fff; }
+.btn-sm { padding: 5px 12px; font-size: 12.5px; }
+
+/* ---------------- 表单 ---------------- */
+.input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s;
+}
+.input:focus { border-color: var(--primary); }
+.select { width: auto; min-width: 110px; }
+.textarea { margin-top: 10px; min-height: 62px; resize: vertical; }
+
+.form-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.form-row .input { flex: 1; min-width: 160px; }
+.form-row .btn { flex-shrink: 0; }
+
+/* ---------------- 登录页 ---------------- */
+.auth-view { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+
+.auth-card {
+  width: 400px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(23, 43, 82, .1);
+  padding: 34px 32px;
+}
+
+.auth-logo { font-size: 24px; text-align: center; }
+.auth-sub { text-align: center; color: var(--text-soft); font-size: 13px; margin-bottom: 22px; }
+
+.tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 10px;
+  cursor: pointer;
+  font-size: 15px;
+  color: var(--text-soft);
+  border-bottom: 2px solid transparent;
+  font-family: inherit;
+}
+.tab.active { color: var(--primary); font-weight: 700; border-bottom-color: var(--primary); }
+
+.auth-form label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 5px; }
+
+.auth-message { margin-top: 14px; font-size: 13px; text-align: center; min-height: 20px; }
+.auth-message.error { color: var(--overdue); }
+.auth-message.ok { color: var(--done); }
+
+/* ---------------- 统计卡片 ---------------- */
+.stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 18px; }
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stat-label { font-size: 12px; color: var(--text-soft); }
+.stat-value { font-size: 22px; font-weight: 700; }
+.c-pending { color: var(--pending); }
+.c-doing   { color: var(--doing); }
+.c-done    { color: var(--done); }
+.c-overdue { color: var(--overdue); }
+
+/* ---------------- 任务列表 ---------------- */
+.task-list { list-style: none; }
+
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.task-item:last-child { border-bottom: none; }
+
+.task-title { flex: 1; font-weight: 500; cursor: pointer; }
+.task-title:hover { color: var(--primary); }
+
+.badge {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge-pending { background: #fdf0e2; color: var(--pending); }
+.badge-doing   { background: #eaf1ff; color: var(--doing); }
+.badge-done    { background: #e6f6ee; color: var(--done); }
+
+.badge-priority { font-size: 11.5px; padding: 2px 8px; border-radius: 6px; background: #f1f3f7; color: var(--text-soft); }
+.badge-priority.high { background: #fdeceb; color: var(--overdue); }
+
+.task-meta { font-size: 12px; color: var(--text-soft); white-space: nowrap; }
+.task-actions { display: flex; gap: 8px; }
+
+.empty { text-align: center; color: var(--text-soft); padding: 28px; font-size: 13px; }
+
+/* ---------------- 详情 / 评论 / 附件 ---------------- */
+.detail-meta { color: var(--text-soft); font-size: 13px; margin-top: 6px; }
+
+.comment-list, .attachment-list { list-style: none; margin-bottom: 14px; }
+
+.comment-item { padding: 10px 0; border-bottom: 1px solid var(--border); }
+.comment-item:last-child { border-bottom: none; }
+.comment-head { font-size: 12px; color: var(--text-soft); margin-bottom: 3px; }
+.comment-author { font-weight: 600; color: var(--primary); }
+.comment-reply { margin-left: 26px; padding-left: 12px; border-left: 2px solid var(--border); }
+
+.attachment-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 13px; }
+.attachment-item a { color: var(--primary); text-decoration: none; }
+.attachment-item a:hover { text-decoration: underline; }
+
+/* ---------------- 表格 ---------------- */
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table th {
+  text-align: left;
+  padding: 9px 10px;
+  background: #f7f9fc;
+  color: var(--text-soft);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+.table td { padding: 9px 10px; border-bottom: 1px solid var(--border); }
+.table tr:last-child td { border-bottom: none; }
+
+/* ---------------- Toast ---------------- */
+.toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1f2733;
+  color: #fff;
+  padding: 10px 22px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .2);
+  z-index: 999;
+}
+.toast.error { background: var(--overdue); }
+.toast.ok { background: var(--done); }
+
+@media (max-width: 900px) {
+  .stats { grid-template-columns: repeat(3, 1fr); }
+}

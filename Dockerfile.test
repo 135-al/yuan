@@ -1,0 +1,36 @@
+# ============================================================
+#  测试运行器镜像 —— 承载 接口 / UI / 并发 / 性能 四层测试
+#
+#  为什么不用 python:slim 而是 Playwright 官方运行时：
+#    UI 自动化需要 Chromium 及其近 30 个系统库（libasound2 / libgbm /
+#    fonts-liberation ...）。官方镜像已内置浏览器内核与全部系统依赖，
+#    避免了手工维护一长串 apt 包、以及版本错配导致的
+#    "Missing X server" / "Host system is missing dependencies" 问题。
+#    代价是镜像体积较大 —— 这是明确权衡后的选择：测试镜像不必追求瘦身，
+#    可复现性与维护成本优先。
+#
+#  镜像内的 Python 自带 playwright，pip install 时版本需与此处 tag 对齐
+#  （requirements-test.txt: playwright==1.64.0）。
+# ============================================================
+
+FROM mcr.microsoft.com/playwright/python:v1.64.0
+
+LABEL org.opencontainers.image.title="taskflow-test-runner" \
+      org.opencontainers.image.description="四层自动化测试运行器（requests / Playwright / Locust）"
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+# ---- 依赖先行（含被测系统运行依赖 + 全套测试依赖）----
+COPY requirements-test.txt ./
+RUN pip install --no-cache-dir -r requirements-test.txt
+
+# ---- 测试代码后置 ----
+COPY . .
+
+# 默认行为：跑接口测试层（各层 command 可在 compose 中被覆盖）
+CMD ["python", "-m", "pytest", "api_tests", "-v"]

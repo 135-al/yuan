@@ -1,0 +1,47 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+
+# ---- 虚拟环境 ----
+.venv/
+venv/
+env/
+
+# ---- 测试产物 ----
+.pytest_cache/
+# coverage 并行模式下会生成 .coverage.<host>.<pid>.<rand>，必须一并排除
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# ---- Docker 输出 ----
+reports/
+perf_tests/results/
+
+# ---- Allure / 报告 ----
+allure-results/
+allure-report.html
+ui_tests/allure-results/
+ui_tests/artifacts/
+perf_tests/results/
+
+# ---- 运行时数据 ----
+*.db
+*.sqlite3
+instance/
+uploads/
+logs/
+
+# ---- IDE / OS ----
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# ---- 临时文件 ----
+*.log
+.tmp*

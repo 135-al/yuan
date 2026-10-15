@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow - 任务管理系统</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ======================= 顶部导航 ======================= -->
+  <header id="topbar" class="topbar hidden" data-testid="topbar">
+    <div class="brand">⚡ TaskFlow <span class="tag">测试练习靶场</span></div>
+    <nav class="nav" data-testid="nav">
+      <button class="nav-btn active" data-testid="nav-dashboard" data-view="dashboard">任务看板</button>
+      <button class="nav-btn" data-testid="nav-logs" data-view="logs">操作日志</button>
+    </nav>
+    <div class="user-area">
+      <span id="current-user" class="user-name" data-testid="current-user"></span>
+      <button class="btn btn-ghost" data-testid="btn-logout">退出</button>
+    </div>
+  </header>
+
+  <!-- ======================= 登录 / 注册 ======================= -->
+  <section id="view-auth" class="view auth-view" data-testid="view-auth">
+    <div class="auth-card">
+      <h1 class="auth-logo">⚡ TaskFlow</h1>
+      <p class="auth-sub">任务管理系统 · 测试练习靶场</p>
+
+      <div class="tabs">
+        <button class="tab active" data-testid="tab-login" data-tab="login">登录</button>
+        <button class="tab" data-testid="tab-register" data-tab="register">注册</button>
+      </div>
+
+      <!-- 登录表单 -->
+      <form id="form-login" class="auth-form" data-testid="form-login" onsubmit="return false;">
+        <label for="login-username">用户名</label>
+        <input id="login-username" data-testid="login-username" type="text" placeholder="请输入用户名" autocomplete="username">
+        <label for="login-password">密码</label>
+        <input id="login-password" data-testid="login-password" type="password" placeholder="请输入密码" autocomplete="current-password">
+        <button id="btn-login" class="btn btn-primary btn-block" data-testid="btn-login">登 录</button>
+      </form>
+
+      <!-- 注册表单 -->
+      <form id="form-register" class="auth-form hidden" data-testid="form-register" onsubmit="return false;">
+        <label for="reg-username">用户名</label>
+        <input id="reg-username" data-testid="reg-username" type="text" placeholder="3-20 位字符">
+        <label for="reg-email">邮箱</label>
+        <input id="reg-email" data-testid="reg-email" type="email" placeholder="name@example.com">
+        <label for="reg-password">密码</label>
+        <input id="reg-password" data-testid="reg-password" type="password" placeholder="至少 6 位">
+        <button id="btn-register" class="btn btn-primary btn-block" data-testid="btn-register">注 册</button>
+      </form>
+
+      <p id="auth-message" class="auth-message" data-testid="auth-message"></p>
+    </div>
+  </section>
+
+  <!-- ======================= 任务看板 ======================= -->
+  <section id="view-dashboard" class="view hidden" data-testid="view-dashboard">
+    <div class="stats" data-testid="stats">
+      <div class="stat-card"><span class="stat-label">任务总数</span><span id="stat-total" class="stat-value" data-testid="stat-total">0</span></div>
+      <div class="stat-card"><span class="stat-label">待办</span><span id="stat-pending" class="stat-value c-pending" data-testid="stat-pending">0</span></div>
+      <div class="stat-card"><span class="stat-label">进行中</span><span id="stat-doing" class="stat-value c-doing" data-testid="stat-doing">0</span></div>
+      <div class="stat-card"><span class="stat-label">已完成</span><span id="stat-done" class="stat-value c-done" data-testid="stat-done">0</span></div>
+      <div class="stat-card"><span class="stat-label">已逾期</span><span id="stat-overdue" class="stat-value c-overdue" data-testid="stat-overdue">0</span></div>
+      <div class="stat-card"><span class="stat-label">完成率</span><span id="stat-rate" class="stat-value" data-testid="stat-rate">0%</span></div>
+    </div>
+
+    <div class="panel">
+      <h2 class="panel-title">新建任务</h2>
+      <div class="form-row">
+        <input id="task-title" data-testid="task-title" class="input" type="text" placeholder="任务标题">
+        <select id="task-priority" data-testid="task-priority" class="input select">
+          <option value="low">低优先级</option>
+          <option value="medium" selected>中优先级</option>
+          <option value="high">高优先级</option>
+        </select>
+        <input id="task-tags" data-testid="task-tags" class="input" type="text" placeholder="标签，逗号分隔">
+        <button id="btn-create-task" class="btn btn-primary" data-testid="btn-create-task">创建任务</button>
+      </div>
+      <textarea id="task-desc" data-testid="task-desc" class="input textarea" placeholder="任务描述（可选）"></textarea>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2 class="panel-title">任务列表</h2>
+        <div class="filters">
+          <select id="filter-status" data-testid="filter-status" class="input select">
+            <option value="">全部状态</option>
+            <option value="pending">待办</option>
+            <option value="doing">进行中</option>
+            <option value="done">已完成</option>
+          </select>
+          <button id="btn-refresh" class="btn btn-ghost" data-testid="btn-refresh">刷新</button>
+        </div>
+      </div>
+      <ul id="task-list" class="task-list" data-testid="task-list"></ul>
+      <p id="task-empty" class="empty hidden" data-testid="task-empty">暂无任务，先创建一个吧</p>
+    </div>
+  </section>
+
+  <!-- ======================= 任务详情 ======================= -->
+  <section id="view-task" class="view hidden" data-testid="view-task">
+    <button class="btn btn-ghost" data-testid="btn-back" id="btn-back">← 返回看板</button>
+
+    <div class="panel">
+      <h2 class="panel-title" data-testid="detail-title" id="detail-title"></h2>
+      <p class="detail-meta" data-testid="detail-meta" id="detail-meta"></p>
+    </div>
+
+    <div class="panel">
+      <h2 class="panel-title">附件</h2>
+      <div class="form-row">
+        <input id="file-input" data-testid="file-input" class="input" type="file">
+        <button id="btn-upload" class="btn btn-primary" data-testid="btn-upload">上传附件</button>
+      </div>
+      <ul id="attachment-list" class="attachment-list" data-testid="attachment-list"></ul>
+    </div>
+
+    <div class="panel">
+      <h2 class="panel-title">评论</h2>
+      <ul id="comment-list" class="comment-list" data-testid="comment-list"></ul>
+      <div class="form-row">
+        <input id="comment-input" data-testid="comment-input" class="input" type="text" placeholder="写下你的评论…">
+        <button id="btn-add-comment" class="btn btn-primary" data-testid="btn-add-comment">发表评论</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= 操作日志 ======================= -->
+  <section id="view-logs" class="view hidden" data-testid="view-logs">
+    <div class="panel">
+      <div class="panel-head">
+        <h2 class="panel-title">操作日志</h2>
+        <div class="filters">
+          <select id="filter-action" data-testid="filter-action" class="input select">
+            <option value="">全部操作</option>
+            <option value="create">create</option>
+            <option value="update">update</option>
+            <option value="delete">delete</option>
+            <option value="login">login</option>
+            <option value="upload">upload</option>
+          </select>
+          <button id="btn-refresh-logs" class="btn btn-ghost" data-testid="btn-refresh-logs">刷新</button>
+        </div>
+      </div>
+      <table class="table" data-testid="log-table">
+        <thead>
+          <tr><th>时间</th><th>用户</th><th>操作</th><th>资源</th><th>详情</th></tr>
+        </thead>
+        <tbody id="log-list" data-testid="log-list"></tbody>
+      </table>
+      <p id="log-empty" class="empty hidden" data-testid="log-empty">暂无日志</p>
+    </div>
+  </section>
+
+</div>
+
+<div id="toast" class="toast hidden" data-testid="toast"></div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>

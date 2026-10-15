@@ -1,0 +1,54 @@
+# ============================================================
+#  Docker 构建上下文排除清单
+#  目的：1) 不把本地虚拟环境 / 测试产物打进镜像（体积与构建速度）
+#        2) 杜绝本地产物污染容器内的测试基线（可复现性）
+# ============================================================
+
+# ---- 版本控制 ----
+.git/
+.gitignore
+.github/
+
+# ---- 虚拟环境（最大元凶：数百 MB）----
+.venv/
+venv/
+env/
+
+# ---- 测试产物 / 报告（每次跑都会变）----
+.pytest_cache/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+allure-results/
+allure-report.html
+ui_tests/allure-results/
+ui_tests/artifacts/
+perf_tests/results/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+reports/
+
+# ---- 运行时数据（容器内由卷提供，不要把宿主机数据拷进去）----
+*.db
+*.sqlite3
+instance/
+uploads/
+
+# ---- 文档产物 / 二进制（镜像用不到，减小上下文）----
+缺陷报告.docx
+*.pdf
+
+# ---- IDE / OS ----
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# ---- Docker 自身（避免自包含）----
+Dockerfile
+Dockerfile.test
+docker-compose.yml
+docker-run.bat
+docker-run.sh

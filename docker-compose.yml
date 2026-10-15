@@ -1,0 +1,154 @@
+# ============================================================
+#  任务管理系统 —— 容器编排
+#
+#  一条命令跑起来：
+#     docker compose up -d app                          # 只起被测系统（演示 / 手工验证）
+#     docker compose --profile test up api-tests        # 接口自动化（75 用例）
+#     docker compose --profile test up ui-tests         # UI 自动化（28 用例，连真实容器服务）
+#     docker compose --profile test up concurrency-tests # 并发缺陷复现
+#     docker compose --profile perf up perf-tests       # 梯度性能压测
+#     docker compose --profile full  up                 # 全套：起 App + 跑完所有测试层退出
+#
+#  为什么要 profiles：
+#    默认 `docker compose up` 只起 App。压测要跑满 CPU、UI 要占浏览器，
+#    不该在一次 up 里全被拉起来。按 profile 分组，执行意图显式化。
+#
+#  两种被测服务接入模式（重要设计）：
+#    ① 自包含模式 —— 接口/并发/性能三层在各自容器内由 conftest / run_perf.py
+#       自行拉起 Flask 服务（带模 fixture 需要直接操作 ORM 造数据、清理数据，
+#       必须同进程持有 app 实例，无法远程化）。
+#       好处：三层跑在独立容器中，端口 5001/5003/5004 天然互不冲突，
+#       甚至可以并行执行 —— 这是容器化带来的真实收益，本地跑时要错峰。
+#    ② 集成模式 —— UI 层通过 UI_BASE_URL 指向独立的 app 容器，
+#       走真实跨容器 HTTP 链路（依赖 depends_on: service_healthy 网关）。
+#       UI 层的用户预置走 API（黑盒），天然适合远程化。
+# ============================================================
+
+name: taskflow
+
+# ---- YAML 锚点：四层测试运行器共享同一份构建与挂载配置 ----
+x-test-runner: &test-runner
+  build:
+    context: .
+    dockerfile: Dockerfile.test
+  image: taskflow/test-runner:latest
+  volumes:
+    # 报告统一出口：容器内写到 /app/reports → 落到宿主机 ./reports
+    # 用 bind mount 而非具名卷，是为了让报告在宿主机直接可读；
+    # 同时 .dockerignore 已排除 reports/，报告不会被打进镜像造成自我污染
+    - ./reports:/app/reports
+  networks:
+    - taskflow
+
+services:
+
+  # ----------------------------------------------------------
+  #  被测系统（Flask 靶场）
+  # ----------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: taskflow/app:latest
+    container_name: taskflow-app
+    ports:
+      - "${APP_PORT:-5000}:5000"
+    environment:
+      # config.py 支持 DATABASE_URL 覆盖 → 落到持久化卷，容器销毁不丢数据
+      DATABASE_URL: sqlite:////app/data/task.db
+      SECRET_KEY: ${SECRET_KEY:-taskflow-container-demo}
+    volumes:
+      - app-data:/app/data          # SQLite 数据文件
+      - app-uploads:/app/uploads    # 附件（config.py 默认路径即此）
+    networks:
+      - taskflow
+    restart: unless-stopped
+    healthcheck:
+      # 不向被测系统注入 /health 路由（保持靶场行为纯正），直接探根路由
+      test: ["CMD", "python", "-c",
+             "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:5000/', timeout=2).status==200 else 1)"]
+      interval: 5s
+      timeout: 3s
+      start_period: 5s
+      retries: 10
+
+  # ----------------------------------------------------------
+  #  ① 接口自动化测试 —— requests + pytest + Allure（自包含）
+  #     75 用例 + 覆盖率
+  # ----------------------------------------------------------
+  api-tests:
+    <<: *test-runner
+    container_name: taskflow-api-tests
+    profiles: ["test", "full"]
+    command: >
+      python -m pytest api_tests -v -ra
+      --alluredir=/app/reports/api-allure-results
+      --clean-alluredir
+      --cov=app
+      --cov-report=term-missing
+      --cov-report=xml:/app/reports/api-coverage.xml
+
+  # ----------------------------------------------------------
+  #  ② UI 自动化测试 —— Playwright + Page Object（集成模式）
+  #     真正跨容器访问 app 服务，验证「部署后的系统」而不仅是「代码」
+  # ----------------------------------------------------------
+  ui-tests:
+    <<: *test-runner
+    container_name: taskflow-ui-tests
+    profiles: ["test", "full"]
+    environment:
+      # 集成模式开关：设了该变量，UI 层不再自行拉起服务，而是连这里的地址
+      UI_BASE_URL: http://app:5000
+    depends_on:
+      app:
+        condition: service_healthy   # 等容器真正可用，而不是仅仅「已启动」
+    command: >
+      python -m pytest ui_tests -v -ra -c pytest_ui.ini
+      --output=/app/reports/ui-artifacts
+      --alluredir=/app/reports/ui-allure-results
+      --clean-alluredir
+
+  # ----------------------------------------------------------
+  #  ③ 并发测试 —— 标签竞态缺陷⑧ 复现（自包含）
+  #     xfail = 缺陷已成功复现；修好后自动转 xpass
+  # ----------------------------------------------------------
+  concurrency-tests:
+    <<: *test-runner
+    container_name: taskflow-concurrency-tests
+    profiles: ["test", "full"]
+    command: >
+      python -m pytest concurrency_tests -v -rx
+      --alluredir=/app/reports/concurrency-allure-results
+      --clean-alluredir
+
+  # ----------------------------------------------------------
+  #  ④ 性能压测 —— Locust 梯度 10/30/50（自包含）
+  # ----------------------------------------------------------
+  perf-tests:
+    <<: *test-runner
+    container_name: taskflow-perf-tests
+    profiles: ["perf", "full"]
+    environment:
+      PERF_STAGE_DURATION: ${PERF_STAGE_DURATION:-20s}
+    command: python perf_tests/run_perf.py 10 30 50
+
+  # ----------------------------------------------------------
+  #  ⑤ 基础功能测试 —— Flask test_client（自包含，最快）
+  # ----------------------------------------------------------
+  unit-tests:
+    <<: *test-runner
+    container_name: taskflow-unit-tests
+    profiles: ["test", "full"]
+    command: python -m pytest tests -v -ra
+
+# ============================================================
+#  网络与卷
+# ============================================================
+
+networks:
+  taskflow:
+    driver: bridge
+
+volumes:
+  app-data:       # SQLite 数据持久化
+  app-uploads:    # 附件持久化
