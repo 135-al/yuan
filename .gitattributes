@@ -22,9 +22,13 @@ docker-compose.yml  text eol=lf
 *.js                text eol=lf
 *.md                text eol=lf
 
-# ---- Windows 批处理：CRLF 才符合 cmd 预期 ----
+# ---- Windows 批处理 / PowerShell：CRLF 才符合预期 ----
 *.bat               text eol=crlf
 *.cmd               text eol=crlf
+*.ps1               text eol=crlf
+
+# 注：push-to-github.ps1 带 UTF-8 BOM，Windows PowerShell 5.1 依赖 BOM
+#     才能正确解析中文输出。BOM 属于文件内容，行尾规范化不会影响它。
 
 # ---- 二进制：禁止任何转换，否则文件损坏 ----
 *.pdf               binary
