@@ -5,6 +5,46 @@
 
 ---
 
+## 第 0 步：根因与解法（必读，省得重复踩坑）
+
+**故障现象**：`ssh: connect to host ... Connection timed out`，或 HTTPS 长时间无响应。
+
+**真实根因不是"墙"，是 DNS 劫持**。诊断证据：
+
+```
+nslookup ssh.github.com
+  → 2a03:2880:f10a:83:face:b00c:0:25de   ← Facebook 的 IPv6 段，与 GitHub 无关
+  → 199.59.149.235                        ← 同样不是 GitHub 的地址
+
+curl "https://cloudflare-dns.com/dns-query?name=ssh.github.com&type=A"
+  → 104.244.46.165                        ← 连加密 DNS(DoH) 都返回同一个伪造结果
+```
+
+即整个网络出口的 DNS 都被重定向了，包括 Cloudflare 的加密 DNS。
+
+**解法：SSH 直连 IP**。SSH 协议不依赖 SNI / Host 头，只要 IP 正确即可建立连接，
+天然可绕开 DNS 污染。已验证可用 IP（22 端口）：
+
+```
+140.82.113.3  140.82.113.4  140.82.114.3  140.82.114.4
+140.82.121.3  140.82.121.4  20.201.28.151  20.205.243.166  20.27.177.113
+```
+
+> ⚠️ **用 IP 直连必须先验指纹**，否则存在中间人风险。已核验上述 IP 全部返回：
+> `SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU`
+> 与 GitHub 官方公布的 Ed25519 指纹完全一致，**确认真身**。
+> 若将来验证时发现指纹不符，**立即停止**，那就是有人在劫持。
+
+配置已写入 `~/.ssh/config`，`Host github.com` 直接指向 `140.82.113.3:22`。
+
+**判据（很重要）**：
+```
+返回 "Permission denied (publickey)"  → 网络已通，只差公钥 ✅ 已经最成功的状态
+返回 "Connection timed out"            → 网络层仍不通
+```
+
+---
+
 ## 第 1 步：在网页端新建空仓库
 
 登录 GitHub 后，有两种入口：
