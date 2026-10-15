@@ -8,7 +8,16 @@
 
 # ---- 接口自动化测试 ----
 requests==2.34.2
-pytest==7.4.4
+
+# ---- 核心测试框架 ----
+# pytest 版本 = 下列插件约束的交集，不能随意钉：
+#     locust 2.46.7          要求 pytest >= 8.3.3, < 10   ← 最紧的一条下限
+#     pytest-playwright 0.10 要求 pytest >= 7.0.0, < 10.0.0
+#     pytest-rerunfailures 16.1 要求 pytest >= 7.4, != 8.2.2
+#     pytest-cov 7.1.0       要求 pytest >= 7
+#     allure-pytest 2.16.0   要求 pytest >= 4.5.0
+# 交集为 [8.3.3, 10)，取 8.4.2（8.x 线最新补丁版）。
+pytest==8.4.2
 allure-pytest==2.16.0
 
 # ---- UI 自动化测试（Playwright）----

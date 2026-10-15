@@ -218,9 +218,36 @@ on:
   workflow_dispatch:  # 手动触发，可自定义压测梯度
 ```
 
-#### CI 流水线本地验证状态
+#### 首次 CI 运行：一个「本地全绿、CI 全红」的真实缺陷（已修复）
 
-四条流水线的**命令已在本地逐条实跑**，逻辑与通过率均已确认：
+推送后流水线自动触发，**4 个 Job 全部在「安装依赖」这一步失败**（4–12 秒内即挂）：
+
+```
+ERROR: ResolutionImpossible: for help visit https://pip.pypa.io/en/latest/topics/dependency-resolution/
+locust 2.46.7 depends on pytest<10 and >=8.3.3
+ERROR: Process completed with exit code 1.
+```
+
+**根因**：`pytest==7.4.4` 被**同时钉在两份文件**里 —— `requirements.txt`（位置错误，它属于
+测试期依赖）与 `requirements-test.txt` —— 而 `locust 2.46.7` 把 pytest 下限收紧到 `>=8.3.3`，
+两个硬约束互斥，pip 无解。
+
+**为什么本地从未发现**：本地 `.venv` 是**历史增量安装**的产物 —— 先装的旧版 locust 没有这条
+下限，之后单独升级 locust 到 2.46.7 时 pip 并未重新求解整棵依赖树，因此**本地环境本身已不可复现**。
+CI 每次都在干净环境重新解析，所以必然暴露。
+
+> 换句话说：CI 不是因为代码有 bug 才红，而是因为它是唯一说真话的环境。
+> **教训：本地跑通不能当作「依赖没问题」的证据。**
+
+**修复**：
+1. `requirements.txt` 移除 `pytest`，回归「只放运行依赖」；
+2. `requirements-test.txt` 按插件约束交集取 `pytest==8.4.2`（推导过程见 [测试体系说明.md](测试体系说明.md) 第九节）；
+3. 用与 CI 同版本的 **Python 3.11 全新 venv** 复刻安装步骤完成验证。
+
+#### 流水线命令本地验证状态
+
+四条流水线的**命令已在与 CI 同版本的 Python 3.11 + 全新 venv 干净环境中逐条实跑**
+（依赖修复后重跑，排除本地 venv 漂移的干扰）：
 
 | Job | CI 命令 | 本地实跑结果 |
 |---|---|---|
@@ -229,21 +256,35 @@ on:
 | concurrency-tests | `pytest concurrency_tests -v -rx --alluredir=...` | ✅ **1 passed, 1 xfailed**（缺陷⑧ 如期复现） |
 | perf-tests | `python perf_tests/run_perf.py` | ✅ 梯度跑通 |
 
+**依赖解析单独验证**（不写盘的纯求解，改依赖后必做）：
+
+```bash
+python -m pip install --dry-run --ignore-installed -r requirements-test.txt
+```
+
+> ✅ 可完整求解出依赖树（68 个包），`pytest-8.4.2` 与 `locust-2.46.7` 共存，无 `ResolutionImpossible`。
+
 尚未覆盖的部分属于 **GitHub 运行环境特有**：Linux 路径语义、`playwright install --with-deps`
-的系统依赖安装、`workflow_dispatch` 入参注入。需在真实 Actions 上首次运行时确认。
+的系统依赖安装、`workflow_dispatch` 入参注入。需在真实 Actions 上验证。
 
 #### 推送到 GitHub 并触发 CI
 
-```bash
-# 本机未装 gh CLI，请在 GitHub 网页新建空仓库（不要勾选 README/.gitignore），然后：
-git remote add origin https://github.com/<你的用户名>/<仓库名>.git
-git branch -M main
-git push -u origin main
+仓库已托管于 GitHub（`main` 分支）。远端采用 **SSH + IP 直连**配置 —— 本机网络出口存在 DNS 劫持
+（`ssh.github.com` 被解析到与 GitHub 无关的地址，连 Cloudflare DoH 都返回同一伪造结果），
+故改用 SSH 直连真实 IP 绕开 DNS；连接前已核对服务器 Ed25519 指纹与 GitHub 官方公布值一致，
+排除中间人风险。完整过程见 **[GITHUB推送指南.md](GITHUB推送指南.md)**。
 
-# 之后每次 push 自动触发流水线；也可在 Actions 页面手动 workflow_dispatch 触发，
-# 并可自定义 perf_stage_users（如 "20 50 100"）调整压测梯度。
+```bash
+git push        # 之后每次 push 自动触发流水线
 ```
 
-> ⚠️ 仓库默认是公开的。若改为 private 请注意：`.coverage*` 与 `*.db` 已被 `.gitignore` 排除，
-> 虚拟环境 `.venv/` 同样不会入库 —— 已核对，58 个纳入文件均无敏感或大体积产物。
+也可在 Actions 页面手动 `workflow_dispatch` 触发，并自定义 `perf_stage_users`（如 `"20 50 100"`）调整压测梯度。
+
+> ⚠️ **Actions 权限必须保持 `Allow all actions and reusable workflows`**：流水线依赖
+> `actions/checkout@v4`、`actions/setup-python@v5`、`actions/upload-artifact@v4`，
+> 三者属 GitHub 官方 `actions` 组织而非本仓库自身。若误选 “Allow &lt;owner&gt; actions only”，
+> 四个 Job 会因 action 被拒而全部失败。
+
+> ⚠️ 仓库为公开仓库。`.venv/`、`*.db`、`.coverage*` 与各层报告产物均已被 `.gitignore` 排除 ——
+> 已核对，纳入版本管理的文件无敏感凭据或大体积产物（仅有压测用假密码 `Perf@12345`，属必需测试数据）。
 

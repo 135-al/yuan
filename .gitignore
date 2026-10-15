@@ -27,6 +27,7 @@ allure-results/
 allure-report.html
 ui_tests/allure-results/
 ui_tests/artifacts/
+concurrency_tests/allure-results/
 perf_tests/results/
 
 # ---- 运行时数据 ----
