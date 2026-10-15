@@ -211,3 +211,39 @@ docker-run.bat all          # 全套
 `.github/workflows/ci.yml` 定义了四段流水线：接口回归 + 覆盖率、UI 回归、性能压测、并发测试，
 产物（Allure 报告 / 失败截图 / Trace / 性能报告）自动归档到 Actions Artifacts。
 
+```yaml
+on:
+  push:            branches: [ main, master, develop ]
+  pull_request:    branches: [ main, master, develop ]
+  workflow_dispatch:  # 手动触发，可自定义压测梯度
+```
+
+#### CI 流水线本地验证状态
+
+四条流水线的**命令已在本地逐条实跑**，逻辑与通过率均已确认：
+
+| Job | CI 命令 | 本地实跑结果 |
+|---|---|---|
+| api-tests | `pytest api_tests tests -c pytest_allure.ini --cov=app` | ✅ **105 passed** |
+| ui-tests | `pytest -c pytest_ui.ini` | ✅ **28 passed** |
+| concurrency-tests | `pytest concurrency_tests -v -rx --alluredir=...` | ✅ **1 passed, 1 xfailed**（缺陷⑧ 如期复现） |
+| perf-tests | `python perf_tests/run_perf.py` | ✅ 梯度跑通 |
+
+尚未覆盖的部分属于 **GitHub 运行环境特有**：Linux 路径语义、`playwright install --with-deps`
+的系统依赖安装、`workflow_dispatch` 入参注入。需在真实 Actions 上首次运行时确认。
+
+#### 推送到 GitHub 并触发 CI
+
+```bash
+# 本机未装 gh CLI，请在 GitHub 网页新建空仓库（不要勾选 README/.gitignore），然后：
+git remote add origin https://github.com/<你的用户名>/<仓库名>.git
+git branch -M main
+git push -u origin main
+
+# 之后每次 push 自动触发流水线；也可在 Actions 页面手动 workflow_dispatch 触发，
+# 并可自定义 perf_stage_users（如 "20 50 100"）调整压测梯度。
+```
+
+> ⚠️ 仓库默认是公开的。若改为 private 请注意：`.coverage*` 与 `*.db` 已被 `.gitignore` 排除，
+> 虚拟环境 `.venv/` 同样不会入库 —— 已核对，58 个纳入文件均无敏感或大体积产物。
+
