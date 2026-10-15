@@ -244,17 +244,23 @@ CI 每次都在干净环境重新解析，所以必然暴露。
 2. `requirements-test.txt` 按插件约束交集取 `pytest==8.4.2`（推导过程见 [测试体系说明.md](测试体系说明.md) 第九节）；
 3. 用与 CI 同版本的 **Python 3.11 全新 venv** 复刻安装步骤完成验证。
 
-#### 流水线命令本地验证状态
+#### CI 真实运行状态（已通过 ✅）
 
-四条流水线的**命令已在与 CI 同版本的 Python 3.11 + 全新 venv 干净环境中逐条实跑**
-（依赖修复后重跑，排除本地 venv 漂移的干扰）：
+修复依赖冲突后推送，**第 2 次运行四 Job 全绿通过，耗时 1 分 38 秒**：
 
-| Job | CI 命令 | 本地实跑结果 |
+| Job | 本地（Python 3.11 干净 venv）| GitHub Actions |
 |---|---|---|
-| api-tests | `pytest api_tests tests -c pytest_allure.ini --cov=app` | ✅ **105 passed** |
-| ui-tests | `pytest -c pytest_ui.ini` | ✅ **28 passed** |
-| concurrency-tests | `pytest concurrency_tests -v -rx --alluredir=...` | ✅ **1 passed, 1 xfailed**（缺陷⑧ 如期复现） |
-| perf-tests | `python perf_tests/run_perf.py` | ✅ 梯度跑通 |
+| api-tests（接口 + 覆盖率）| ✅ 105 passed | ✅ 通过 |
+| ui-tests（Playwright）| ✅ 28 passed | ✅ 通过 |
+| concurrency-tests（标签竞态）| ✅ 1 passed, 1 xfailed（缺陷⑧ 如期复现）| ✅ 通过 |
+| perf-tests（Locust 冒烟压测）| ✅ 梯度跑通 | ✅ 通过 |
+
+> **1m38s 是怎么构成的**：`api-tests` 与 `ui-tests` 无依赖关系、并行开跑；
+> `perf-tests`、`concurrency-tests` 均声明 `needs: api-tests`，等接口层通过后才并行启动。
+> 总时长 ≈ 第一棒较慢者 + 第二棒较慢者，与实测吻合。
+>
+> CI 中的性能 job 是**冒烟级**（`PERF_STAGE_DURATION: 15s`，梯度默认 `20 50`），
+> 与本地全套的 10/30/50 梯度用途不同：CI 只验证「压测链路可跑通」，不产出性能基线。
 
 **依赖解析单独验证**（不写盘的纯求解，改依赖后必做）：
 
@@ -264,8 +270,8 @@ python -m pip install --dry-run --ignore-installed -r requirements-test.txt
 
 > ✅ 可完整求解出依赖树（68 个包），`pytest-8.4.2` 与 `locust-2.46.7` 共存，无 `ResolutionImpossible`。
 
-尚未覆盖的部分属于 **GitHub 运行环境特有**：Linux 路径语义、`playwright install --with-deps`
-的系统依赖安装、`workflow_dispatch` 入参注入。需在真实 Actions 上验证。
+> 早期担心的「GitHub 环境特有」环节 —— Linux 路径语义、`playwright install --with-deps`
+> 的系统依赖安装、`workflow_dispatch` 入参注入 —— **均已在真实 runner 上跑通**。
 
 #### 推送到 GitHub 并触发 CI
 
